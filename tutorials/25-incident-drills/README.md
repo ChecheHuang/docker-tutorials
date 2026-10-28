@@ -234,8 +234,10 @@ distroless 沒有 `nslookup`，借一個 busybox 共用 shorty 的 network names
 
 ```bash
 APP=$(docker compose -f tutorials/25-incident-drills/dns/compose.broken.yaml ps -aq app)
-docker run --rm --network container:$APP busybox nslookup db
-docker run --rm --network container:$APP busybox cat /etc/resolv.conf
+# app 重試 10 次後就 exit 了，--network container:$APP 會失敗（container 不在跑）。
+# 改在同一個預設 bridge 上測，這正是 app 所在的網路：
+docker run --rm busybox nslookup db
+docker run --rm busybox cat /etc/resolv.conf
 docker inspect --format '{{json .NetworkSettings.Networks}}' $APP
 ```
 
@@ -322,23 +324,30 @@ docker ps --filter publish=8080                   # 是不是 container 佔的
 
 ```bash
 docker compose -f tutorials/25-incident-drills/zombie/compose.yaml up -d
-docker top zombie-no-init-1
-docker top zombie-with-init-1
+docker exec zombie-no-init-1 ps -o pid,ppid,stat,comm
+docker exec zombie-with-init-1 ps -o pid,ppid,stat,comm
 ```
 
-範例輸出：
+> 注意：這裡用 `docker exec ... ps`，不用 `docker top`。`docker top` 在目前的 Docker Engine 上不會列出 `<defunct>` 行程（已實測），`exec` 看得到 `Z` 狀態。
+
+範例輸出（節錄）：
 
 ```
 # no-init
-UID    PID     PPID    ...  CMD
-root   41021   41000   ...  sleep 3600
-root   41040   41021   ...  [sleep] <defunct>
-root   41041   41021   ...  [sleep] <defunct>
-...（共 5 個）
+PID   PPID  STAT  COMMAND
+    1     0 S     sleep
+    8     1 Z     sleep
+   10     1 Z     sleep
+   12     1 Z     sleep
+   14     1 Z     sleep
+   16     1 Z     sleep
+   17     0 R     ps
 
 # with-init
-root   41100   41080   ...  /sbin/docker-init -- sh -c ...
-root   41120   41100   ...  sleep 3600
+PID   PPID  STAT  COMMAND
+    1     0 S     docker-init
+    7     1 S     sleep
+   18     0 R     ps
 ```
 
 **排查流程**

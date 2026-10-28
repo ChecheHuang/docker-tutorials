@@ -2,8 +2,8 @@
 #
 #   docker compose -f tutorials/25-incident-drills/zombie/compose.yaml up -d
 #   （等 2 秒）
-#   docker top zombie-no-init-1      # 5 個 [sleep] <defunct>
-#   docker top zombie-with-init-1    # 沒有 defunct
+#   docker exec zombie-no-init-1 ps -o pid,ppid,stat,comm     # 5 個 Z (defunct) 的 sleep
+#   docker exec zombie-with-init-1 ps -o pid,ppid,stat,comm   # 沒有 Z
 #   docker compose -f tutorials/25-incident-drills/zombie/compose.yaml down
 #
 # (sleep 1 &) 的外層 subshell 馬上結束，sleep 1 變成孤兒、被過繼給 PID 1。
