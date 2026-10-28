@@ -141,11 +141,14 @@ local     3f9c1a7e0b2d4c...e81
 local     a04b7d2c9e1f6a...19c
 ```
 
-這些就是沒加 `-v` 刪 db 時留下的孤兒。清掉（`prune` 預設只清**匿名**的、沒人用的 volume）：
+這些就是沒加 `-v` 刪 db 時留下的孤兒。先列出來，確認是哪幾個，再逐一刪除：
 
 ```bash
-docker volume prune
+docker volume ls -f dangling=true     # 列出沒人用的 volume
+docker volume rm <名字>                # 逐一指定名字刪除
 ```
+
+> 不建議用 `docker volume prune`：它會一次清掉整台機器上所有沒人用的匿名 volume，連別的專案的一起刪。
 
 ### 3. 建 named volume，跑 Postgres
 
