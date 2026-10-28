@@ -64,6 +64,8 @@ docker run -d -p 8080:80 nginx
 
 **Windows（作者的環境）**
 
+> 完整的 Windows 設定（Docker Desktop 與 WSL2 裡直接裝 Docker Engine 怎麼選、把 repo clone 進 WSL2、`.wslconfig`、各章差異）見 [WINDOWS.md](../../WINDOWS.md)。下面是 Docker Desktop 的最短路徑。
+
 1. 確認 Windows 10 22H2 以上或 Windows 11，BIOS 已開啟虛擬化（工作管理員 → 效能 → CPU →「虛擬化：已啟用」）。
 2. 以系統管理員開 PowerShell，安裝／更新 WSL2：
 

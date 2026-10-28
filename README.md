@@ -7,6 +7,8 @@
 > 🧸 想先用故事直覺理解？每章都附 `STORY.md` 故事版（小學生都懂的比喻版）。
 >
 > 從 Node／TypeScript 來：每章 README 都有「對照 Node／TypeScript」段落。
+>
+> 🪟 用 Windows 學：先看 [WINDOWS.md](./WINDOWS.md)，設定好 WSL2 再開始。
 
 ## 快速開始
 

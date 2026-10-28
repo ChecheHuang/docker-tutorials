@@ -1,0 +1,6 @@
+# 腳本一律 LF，避免在 Windows clone 後出現 /bin/bash^M: bad interpreter（見 WINDOWS.md）
+run      text eol=lf
+*.sh     text eol=lf
+Dockerfile*  text eol=lf
+*.yaml   text eol=lf
+*.yml    text eol=lf
