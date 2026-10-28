@@ -36,8 +36,6 @@ services:
 
     # fork bomb 防線：最多 100 個 process / thread
     pids_limit: 100
-    deploy:
-      resources:
-        limits:
-          memory: 128M
+    # 用 mem_limit 而非 deploy.resources.limits：後者跟 pids_limit 併用時 compose v5 會報衝突
+    mem_limit: 128M
     restart: unless-stopped
