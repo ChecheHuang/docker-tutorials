@@ -11,6 +11,8 @@
 > 🪟 用 Windows 學：先看 [WINDOWS.md](./WINDOWS.md)，設定好 WSL2 再開始。
 >
 > ✅ 各章在真的 Docker 上的驗證進度見 [VERIFY.md](./VERIFY.md)。
+>
+> 🐹 想同時把 Go 學熟？照 go-tutorials 的 [LEARNING-PATH.md](https://github.com/ChecheHuang/go-tutorials/blob/master/LEARNING-PATH.md) 交錯學：Docker 01–05 → Go 15–22 → Docker 06–20 → Go 24–33 → Docker 21–25。
 
 ## 快速開始
 
