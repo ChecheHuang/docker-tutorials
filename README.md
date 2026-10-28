@@ -9,6 +9,8 @@
 > 從 Node／TypeScript 來：每章 README 都有「對照 Node／TypeScript」段落。
 >
 > 🪟 用 Windows 學：先看 [WINDOWS.md](./WINDOWS.md)，設定好 WSL2 再開始。
+>
+> ✅ 各章在真的 Docker 上的驗證進度見 [VERIFY.md](./VERIFY.md)。
 
 ## 快速開始
 
