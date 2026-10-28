@@ -106,10 +106,10 @@ ENTRYPOINT ["/shorty"]
 
 | 檔案 | runtime base | shorty image（範例） |
 |------|------|------|
-| [`Dockerfile.debian-slim`](./Dockerfile.debian-slim) | `debian:trixie-slim` + `apt-get install ca-certificates tzdata` | ~95 MB |
-| [`Dockerfile.alpine`](./Dockerfile.alpine) | `alpine:3.22` + `apk add ca-certificates tzdata` | ~23 MB |
-| **[`Dockerfile`](./Dockerfile)** | **`gcr.io/distroless/static-debian12`** | **~15 MB** |
-| [`Dockerfile.scratch`](./Dockerfile.scratch) | `scratch` + 從 build stage `COPY` CA 和 zoneinfo | ~14 MB |
+| [`Dockerfile.debian-slim`](./Dockerfile.debian-slim) | `debian:trixie-slim` + `apt-get install ca-certificates tzdata` | ~143 MB |
+| [`Dockerfile.alpine`](./Dockerfile.alpine) | `alpine:3.22` + `apk add ca-certificates tzdata` | ~33 MB |
+| **[`Dockerfile`](./Dockerfile)** | **`gcr.io/distroless/static-debian12`** | **~23 MB** |
+| [`Dockerfile.scratch`](./Dockerfile.scratch) | `scratch` + 從 build stage `COPY` CA 和 zoneinfo | ~19 MB |
 
 **為什麼選 distroless 而不是 scratch？** 只差 1～2 MB，distroless 卻多了：Google 維護、會更新的 CA 憑證和 tzdata、有 `nonroot` 使用者的 `/etc/passwd`（第 21 章用 `:nonroot` tag），以及隨時可以換成 `:debug` 的退路。scratch 每一樣都要自己搬、自己更新。
 
@@ -160,11 +160,11 @@ docker images shorty
 
 ```
 REPOSITORY   TAG            IMAGE ID       CREATED          SIZE
-shorty       ch09-scratch   7c1d2e3f4a5b   5 seconds ago    14.1MB
-shorty       ch09-alpine    6b0c1d2e3f4a   10 seconds ago   23.2MB
-shorty       ch09-slim      5a9b0c1d2e3f   20 seconds ago   95.4MB
-shorty       ch09           4f8a9b0c1d2e   30 seconds ago   14.6MB
-shorty       ch08           9b7e4a2c1f30   1 hour ago       26.3MB
+shorty       ch09-scratch   7c1d2e3f4a5b   5 seconds ago    19MB
+shorty       ch09-alpine    6b0c1d2e3f4a   10 seconds ago   33MB
+shorty       ch09-slim      5a9b0c1d2e3f   20 seconds ago   143MB
+shorty       ch09           4f8a9b0c1d2e   30 seconds ago   23.2MB
+shorty       ch08           9b7e4a2c1f30   1 hour ago       39.3MB
 ```
 
 四個都跑跑看：
@@ -227,11 +227,11 @@ docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep hello
 範例輸出：
 
 ```
-hello-node:distroless   172MB
-hello-node:alpine       167MB
-hello-node:ch08         231MB
-hello-rs:scratch        3.1MB
-hello-rs:ch08           25.1MB
+hello-node:distroless   208MB
+hello-node:alpine       249MB
+hello-node:ch08         336MB
+hello-rs:scratch        2.1MB
+hello-rs:ch08           39.1MB
 ```
 
 ## 對照 Node／TypeScript

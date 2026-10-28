@@ -137,8 +137,8 @@ docker images shorty
 
 ```
 REPOSITORY   TAG    IMAGE ID       CREATED          SIZE
-shorty       ch21   3f1c0a9b2d7e   10 seconds ago   12.4MB
-shorty       bad    9a8b7c6d5e4f   1 minute ago     1.05GB
+shorty       ch21   3f1c0a9b2d7e   10 seconds ago   23.2MB
+shorty       bad    9a8b7c6d5e4f   1 minute ago     1.82GB
 ```
 
 ### 2. 秘密真的看得到

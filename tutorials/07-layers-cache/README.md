@@ -116,8 +116,8 @@ CMD ["shorty"]
 
 | image | 大小 | 說明 |
 |------|------|------|
-| `shorty:ch06` | ~1.1 GB | |
-| `shorty:ch07` | ~1.1 GB | 幾乎一樣 —— 這章改的是 **build 速度**，不是大小 |
+| `shorty:ch06` | ~1.7 GB | |
+| `shorty:ch07` | ~1.7 GB | 幾乎一樣 —— 這章改的是 **build 速度**，不是大小 |
 
 依賴從 `RUN go build` 那層搬到了 `RUN go mod download` 那層，總量沒變。瘦身是下一章的事。
 

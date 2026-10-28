@@ -6,7 +6,7 @@
 
 ## 為什麼需要這個
 
-第 10 章結束時，shorty 的 Dockerfile 已經是 multi-stage + distroless + `ARG VERSION`，image 只有十幾 MB。但 build 還有兩個問題：
+第 10 章結束時，shorty 的 Dockerfile 已經是 multi-stage + distroless + `ARG VERSION`，image 只有二十多 MB。但 build 還有兩個問題：
 
 1. **layer 快取是「全有或全無」**。`go.mod` 加了一個依賴，`RUN go mod download` 這層就整層失效，**所有**模組重新下載；改一行程式碼，`go build` 那層失效，**所有** package 重新編譯。在自己電腦上 `go build` 只要兩秒，到了 Docker 裡卻要一分鐘。
 2. **私有依賴需要 token**。公司內部的 Go module 放在私有 GitHub repo，`go mod download` 要帳密。用 `ARG GITHUB_TOKEN` 傳進去？第 14 章會示範：build arg 會留在 `docker history` 裡，等於把 token 印在 image 上送出去。

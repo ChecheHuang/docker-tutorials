@@ -108,8 +108,8 @@ CMD ["shorty"]
 
 | image | 大小 |
 |------|------|
-| `shorty:ch07` | ~1.1 GB |
-| `shorty:ch08` | **~26 MB** |
+| `shorty:ch07` | ~1.7 GB |
+| `shorty:ch08` | **~39 MB** |
 
 縮小四十倍。第 09 章換 base image、拿掉除錯符號，還能再砍一半。
 
@@ -190,7 +190,7 @@ CMD ["node", "server.js"]
 | 產物 | 一個靜態執行檔 | 一個執行檔（動態連結 glibc） | `.js` + `node_modules` |
 | runtime 需要什麼 | 什麼都不用 | glibc | Node.js runtime |
 | runtime base | `alpine:3.22` | `distroless/cc-debian12` | `node:24-slim` |
-| 最終大小（範例） | ~26 MB | ~25 MB | ~230 MB |
+| 最終大小（範例） | ~39 MB | ~39 MB | ~336 MB |
 | 單階段時（範例） | ~1.1 GB | ~1.5 GB | ~1.1 GB |
 
 編譯成原生執行檔的語言（Go、Rust）從 multi-stage 得到的好處最大。Node 也省下不少，但天花板卡在 runtime 本身的大小 —— 第 09 章看 alpine 和 distroless 能再省多少。
@@ -210,9 +210,9 @@ docker images shorty
 
 ```
 REPOSITORY   TAG    IMAGE ID       CREATED          SIZE
-shorty       ch08   9b7e4a2c1f30   10 seconds ago   26.3MB
-shorty       ch07   5d1e0b7c9a42   1 hour ago       1.12GB
-shorty       ch06   3f2a9c1d8e7b   2 hours ago      1.12GB
+shorty       ch08   9b7e4a2c1f30   10 seconds ago   39.3MB
+shorty       ch07   5d1e0b7c9a42   1 hour ago       1.69GB
+shorty       ch06   3f2a9c1d8e7b   2 hours ago      1.69GB
 ```
 
 ```bash
@@ -273,9 +273,9 @@ docker images --format "table {{.Repository}}:{{.Tag}}\t{{.Size}}" | grep -E "sh
 範例輸出：
 
 ```
-shorty:ch08          26.3MB
-hello-rs:ch08        25.1MB
-hello-node:ch08      231MB
+shorty:ch08          39.3MB
+hello-rs:ch08        39.1MB
+hello-node:ch08      336MB
 ```
 
 ## 對照 Node／TypeScript

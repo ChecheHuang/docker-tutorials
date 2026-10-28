@@ -6,7 +6,7 @@
 
 ## 為什麼需要這個
 
-到第 09 章為止，shorty 的 image 只剩 ~15 MB，看起來很完美。但還有兩個問題：
+到第 09 章為止，shorty 的 image 只剩 ~23 MB，看起來很完美。但還有兩個問題：
 
 1. **你不確定送了什麼進去**。每次 `docker build ... app`，Docker 都會把 `app/` 交給 builder。如果裡面躺著 `.git`、本機編好的 `shorty.exe`、寫了資料庫密碼的 `.env`，它們都可能被 `COPY . .` 帶進 image，或至少讓每次 build 的快取無故失效。
 2. **你不知道 container 裡跑的是哪一版**。`curl localhost:8080/version` 永遠回 `{"version":"dev"}`。線上出事時，「現在跑的是哪個 commit？」答不出來。
@@ -156,7 +156,7 @@ ENTRYPOINT ["/shorty"]
 - runtime stage 不需要 `VERSION`，版本已經編進執行檔裡了。
 - `.dockerignore` 沒有改，本章是把它「看懂」。
 
-**image 大小（範例）**：~15 MB，跟第 09 章一樣。這章改的是**可追蹤性**，不是大小。
+**image 大小（範例）**：~23 MB，跟第 09 章一樣。這章改的是**可追蹤性**，不是大小。
 
 ## 動手做
 
