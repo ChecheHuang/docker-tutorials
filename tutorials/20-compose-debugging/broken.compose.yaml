@@ -1,0 +1,48 @@
+# 第 20 章：故意寫壞的 compose 檔 —— 裡面藏了 6 個 bug，請一個一個修好它。
+#
+# 從 repo 根目錄執行：
+#   docker compose -f tutorials/20-compose-debugging/broken.compose.yaml config
+#   docker compose -f tutorials/20-compose-debugging/broken.compose.yaml up -d --build
+#   docker compose -f tutorials/20-compose-debugging/broken.compose.yaml logs app
+#   curl localhost:8080/readyz
+#
+# 建議先複製一份再改，原檔留著對照：
+#   cp tutorials/20-compose-debugging/broken.compose.yaml tutorials/20-compose-debugging/fixed.compose.yaml
+#
+# 提示：有些 bug 用 `config` 就抓得到，有些要 `up` 之後看 log 才會現形。
+# 答案在 README.md 的「練習解答」。
+
+services:
+  app:
+    build:
+      context: ../../app
+    image: shorty:ch20
+    ports:
+      - "8080:80"
+    environment:
+      - BASE_URL=http://localhost:8080
+      - DATABASE_URL=postgres://shorty:shorty@localhost:5432/shorty?sslmode=disable
+      - REDIS_URL=redis://cache:6379/0
+      - LOG_LEVEL: debug
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: shorty
+      POSTGRES_PASSWORD: shorty
+      POSTGRES_DB: shorty
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  cache:
+    image: redis:7-alpine

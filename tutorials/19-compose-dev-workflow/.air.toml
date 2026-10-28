@@ -1,0 +1,31 @@
+# 第 19 章：air 設定（由 compose.override.yaml 掛到 /etc/air/air.toml）
+# 完整選項見 https://github.com/air-verse/air 的 air_example.toml
+
+# 監看的根目錄：container 裡的 /src，也就是 bind mount 進來的 app/
+root = "."
+# 編譯產物放 /tmp/air（container 內），不要寫回 bind mount，免得 host 的 app/ 多出 tmp/
+tmp_dir = "/tmp/air"
+
+[build]
+cmd = "go build -o /tmp/air/shorty ."
+entrypoint = ["/tmp/air/shorty"]
+include_ext = ["go"]
+exclude_dir = ["tmp", "vendor"]
+exclude_regex = ['_test\.go']   # TOML 單引號字串不處理跳脫，regex 比較好寫
+# 存檔後等 500ms 再 build，避免編輯器連續寫檔觸發好幾次
+delay = 500
+# 編譯失敗時停掉舊的 shorty，讓你一眼看出「現在跑的不是最新版」
+stop_on_error = true
+# 重啟前先送 SIGINT，讓 shorty 走 graceful shutdown（第 16 章），等 2 秒再強制結束
+send_interrupt = true
+kill_delay = "2s"
+# Windows / 部分 macOS 的 bind mount 收不到檔案變更事件（inotify），改用輪詢
+# Linux 原生 Docker 可以改成 false，省一點 CPU
+poll = true
+poll_interval = 500
+
+[log]
+time = true
+
+[misc]
+clean_on_exit = true

@@ -1,0 +1,98 @@
+#!/bin/bash
+# docker-tutorials 快速指令
+#
+#   ./run                  互動選章節（列表 + 輸入編號，開 README）
+#   ./run list             只列章節
+#   ./run readme 08        開該章 README
+#   ./run story 08         開該章 STORY.md
+#
+#   ./run app              不用 Docker，直接 go run shorty（in-memory）
+#   ./run test             跑 shorty 的測試
+#   ./run build            docker build -t shorty app
+#   ./run up               docker compose up -d --build（shorty + Postgres + Redis）
+#   ./run down             docker compose down
+
+set -e
+cd "$(dirname "$0")"
+
+export PATH="$HOME/go/bin:/c/Program Files/Go/bin:$PATH"
+
+find_chapter() {
+    local n="$1"
+    if [ ${#n} -eq 1 ]; then n="0$n"; fi
+    local dir
+    dir=$(ls tutorials/ | grep "^${n}-" | head -1)
+    if [ -z "$dir" ]; then
+        echo "找不到第 $1 章" >&2
+        exit 1
+    fi
+    echo "$dir"
+}
+
+list_chapters() {
+    echo ""
+    echo "  ===== Docker Tutorials ====="
+    echo ""
+    echo "  基礎概念 (01–05)"
+    ls tutorials/ | grep -E '^0[1-5]-' | sed 's/^/    /'
+    echo ""
+    echo "  寫 Dockerfile (06–11)"
+    ls tutorials/ | grep -E '^(0[6-9]|1[01])-' | sed 's/^/    /'
+    echo ""
+    echo "  執行期 (12–16)"
+    ls tutorials/ | grep -E '^1[2-6]-' | sed 's/^/    /'
+    echo ""
+    echo "  Compose (17–20)"
+    ls tutorials/ | grep -E '^(1[7-9]|20)-' | sed 's/^/    /'
+    echo ""
+    echo "  上線 (21–25)"
+    ls tutorials/ | grep -E '^2[1-5]-' | sed 's/^/    /'
+    echo ""
+}
+
+open_doc() {
+    local n="$1" file="$2"
+    local dir
+    dir=$(find_chapter "$n")
+    less "tutorials/$dir/$file"
+}
+
+need_docker() {
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "找不到 docker 指令，先看第 02 章安裝 Docker" >&2
+        exit 1
+    fi
+}
+
+case "${1:-pick}" in
+    pick)
+        list_chapters
+        read -rp "輸入章節編號 (e.g. 08)，或 Enter 退出: " n
+        if [ -z "$n" ]; then exit 0; fi
+        open_doc "$n" README.md
+        ;;
+
+    list|ls) list_chapters ;;
+
+    readme|story)
+        if [ -z "$2" ]; then echo "用法：./run $1 <章節編號>"; exit 1; fi
+        if [ "$1" = "readme" ]; then open_doc "$2" README.md; else open_doc "$2" STORY.md; fi
+        ;;
+
+    # ── shorty ──────────────────────────────────────────────
+    app)   ( cd app && go run . ) ;;
+    test)  ( cd app && go test ./... ) ;;
+    build) need_docker; docker build -t shorty app ;;
+    up)    need_docker; docker compose up -d --build ;;
+    down)  need_docker; docker compose down ;;
+
+    help|--help|-h)
+        sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+        ;;
+
+    *)
+        echo "未知指令：$1"
+        echo "跑 ./run help 看用法"
+        exit 1
+        ;;
+esac

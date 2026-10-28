@@ -1,0 +1,69 @@
+# syntax=docker/dockerfile:1
+#
+# 第 23 章：Rust（hello-rs，axum + tokio）的多平台 build —— 交叉編譯版
+#
+#   docker buildx build --platform linux/amd64,linux/arm64 \
+#     -f tutorials/23-multi-platform/Dockerfile.rust -t hello-rs:multi \
+#     tutorials/08-multi-stage/rust
+#
+# build context 是第 08 章的 Rust 範例；同目錄的 Dockerfile.rust.dockerignore 會排除 target/。
+#
+# 跟 Go 的差別：Go（CGO_ENABLED=0）交叉編譯只要設 GOARCH；
+# Rust 除了 `rustup target add <triple>`，還需要「目標架構的 linker 與 libc」，
+# 因為 glibc target 最後一步要靠 C 工具鏈把東西連起來。
+#
+# 其他做法（README 有比較）：
+#   - cargo-zigbuild：用 zig 當 linker，不用裝 Debian 的 cross gcc，也能指定 glibc 版本
+#   - musl target + distroless/static：完全靜態，但 musl 的 malloc 在高併發下較慢
+#   - QEMU：把第一行的 --platform=$BUILDPLATFORM 拿掉、不加 --target，最簡單但 Rust 編譯會慢非常多
+
+# ── build stage：跑在 build 機器的原生架構 ─────────────────────
+FROM --platform=$BUILDPLATFORM rust:1-bookworm AS build
+
+# BuildKit 自動提供這些 ARG，但 stage 裡要宣告才看得到
+ARG TARGETARCH
+ARG BUILDARCH
+
+# 把 Docker 的架構名稱（amd64 / arm64）換成 Rust 的 target triple，
+# 不同架構時才裝 cross gcc（同架構直接用 image 內建的 gcc）
+RUN set -eux; \
+    case "$TARGETARCH" in \
+      amd64) triple=x86_64-unknown-linux-gnu;  gcc_pkg=gcc-x86-64-linux-gnu ;; \
+      arm64) triple=aarch64-unknown-linux-gnu; gcc_pkg=gcc-aarch64-linux-gnu ;; \
+      *) echo "unsupported TARGETARCH: $TARGETARCH" >&2; exit 1 ;; \
+    esac; \
+    echo "$triple" > /rust-target; \
+    rustup target add "$triple"; \
+    if [ "$TARGETARCH" != "$BUILDARCH" ]; then \
+      apt-get update; \
+      apt-get install -y --no-install-recommends "$gcc_pkg" "libc6-dev-${TARGETARCH}-cross"; \
+      rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# 告訴 cargo 每個 target 用哪個 linker（Debian 的 gcc 在原生架構也提供同名指令）
+ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc \
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+
+WORKDIR /src
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+
+# 兩個平台會「同時」在同一台 build 機器上跑，所以 cache mount 用 sharing=locked 排隊；
+# target/ 底下本來就依 triple 分目錄，不會互相覆蓋
+# cache mount 不會留在 layer 裡，所以要在同一個 RUN 把執行檔複製出來
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
+    --mount=type=cache,target=/src/target,sharing=locked \
+    set -eux; \
+    triple="$(cat /rust-target)"; \
+    cargo build --release --locked --target "$triple"; \
+    mkdir -p /out; \
+    cp "target/$triple/release/hello-rs" /out/hello-rs
+
+# ── runtime stage：目標平台 ────────────────────────────────
+# cc 變體 = static + glibc + libgcc；Rust 的 gnu target 需要它。
+# builder 是 bookworm、runtime 是 debian12（= bookworm），glibc 版本一致
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=build /out/hello-rs /hello-rs
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/hello-rs"]

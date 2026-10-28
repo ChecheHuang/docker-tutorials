@@ -1,0 +1,65 @@
+# shorty 的最終版 compose —— app + Postgres + Redis（第 17–20 章一路演進到這裡）
+#
+#   docker compose up -d --build
+#   curl -XPOST localhost:8080/api/links -d '{"url":"https://go.dev"}'
+#   docker compose logs -f app
+#   docker compose down        # 加 -v 會連 DB 資料一起刪
+
+services:
+  app:
+    build:
+      context: ./app
+      args:
+        VERSION: ${VERSION:-dev}
+    image: shorty:${VERSION:-dev}
+    ports:
+      - "8080:8080"
+    environment:
+      BASE_URL: http://localhost:8080
+      DATABASE_URL: postgres://shorty:${POSTGRES_PASSWORD:-shorty}@db:5432/shorty?sslmode=disable
+      REDIS_URL: redis://cache:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GOMEMLIMIT: 100MiB             # 約 memory limit 的 80%，讓 Go GC 在被 OOM kill 前先回收（第 15 章）
+    depends_on:
+      db:
+        condition: service_healthy   # 等 DB 真的能連，不只是 container 起來（第 18 章）
+      cache:
+        condition: service_healthy
+    restart: unless-stopped          # 第 15 章
+    deploy:
+      resources:
+        limits:
+          memory: 128M               # 第 15 章
+    # distroless 沒有 shell / curl，healthcheck 交給外部（第 16 章）
+    read_only: true                  # 第 21 章
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL                          # shorty 只聽 8080（> 1024），不需要任何 Linux capability（第 21 章）
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: shorty
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shorty}
+      POSTGRES_DB: shorty
+    volumes:
+      - db-data:/var/lib/postgresql/data   # named volume，資料活得比 container 久（第 13 章）
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shorty -d shorty"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  cache:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  db-data:

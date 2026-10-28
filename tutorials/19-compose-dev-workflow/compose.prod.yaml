@@ -1,0 +1,24 @@
+# 第 19 章：「類上線」覆寫檔，示範用 -f 疊加多個檔案切換環境
+#
+#   cd tutorials/19-compose-dev-workflow
+#   docker compose -f compose.yaml -f compose.prod.yaml config    # 先看合併結果
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d --build
+#
+# 後面的檔案覆蓋前面的。這裡把第 15 章的 restart / 記憶體限制加回來，
+# 第 21 章的 read_only / no-new-privileges 則留到那章（最終版在根目錄 compose.yaml）。
+
+services:
+  app:
+    environment:
+      LOG_LEVEL: warn
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  db:
+    restart: unless-stopped
+
+  cache:
+    restart: unless-stopped

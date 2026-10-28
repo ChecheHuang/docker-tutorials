@@ -1,0 +1,3 @@
+# 本機的 node_modules 不要送進去：image 裡會用 npm ci 重新裝（第 08、10 章）
+node_modules/
+npm-debug.log*

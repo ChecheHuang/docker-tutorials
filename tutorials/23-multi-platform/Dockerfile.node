@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1
+#
+# 第 23 章：Node（hello-node，express）的多平台 build
+#
+#   docker buildx build --platform linux/amd64,linux/arm64 \
+#     -f tutorials/23-multi-platform/Dockerfile.node -t hello-node:multi \
+#     tutorials/08-multi-stage/node
+#
+# build context 是第 08 章的 Node 範例；同目錄的 Dockerfile.node.dockerignore 會排除 node_modules/。
+#
+# Node 是直譯語言：server.js 本身跟 CPU 架構無關，真正有架構差異的是
+#   1. node 執行檔本身 → 官方 node image 已經是多平台，FROM 會自動選對
+#   2. native module（bcrypt、sharp、better-sqlite3…）→ npm install 時編譯或下載「當下架構」的 .node 檔
+#
+# hello-node 只依賴 express（純 JS），所以 npm ci 可以放在 $BUILDPLATFORM 原生跑，
+# 產出的 node_modules 兩個架構通用。
+#
+# ⚠️ 如果加了 native module：把 deps stage 的 --platform=$BUILDPLATFORM 拿掉，
+#    讓 npm ci 在目標架構（QEMU 模擬）裡跑，才會裝到正確架構的 binary。
+#    慢，但正確；在 amd64 裝好的 bcrypt 搬到 arm64 會在啟動時直接爆炸。
+
+# ── deps stage：原生架構裝依賴（僅限純 JS 依賴！）──────────────
+FROM --platform=$BUILDPLATFORM node:24-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev
+
+# ── runtime stage：目標平台 ────────────────────────────────
+# deps 與 runtime 要同一種 libc（都是 slim = Debian glibc），不要一邊 alpine（musl）一邊 slim
+FROM node:24-slim
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json server.js ./
+# 官方 node image 內建 node 使用者（uid 1000）
+USER node
+EXPOSE 8080
+# 直接跑 node，不要用 npm start：npm 當 PID 1 會吃掉 SIGTERM（第 16 章）
+CMD ["node", "server.js"]

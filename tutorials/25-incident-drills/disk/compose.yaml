@@ -1,0 +1,28 @@
+# 演練 2：log 把磁碟塞滿
+#
+#   docker compose -f tutorials/25-incident-drills/disk/compose.yaml up -d
+#   （等一兩分鐘）
+#   docker inspect --format '{{.LogPath}}' disk-noisy-1 disk-rotated-1
+#   docker compose -f tutorials/25-incident-drills/disk/compose.yaml down
+#
+# 兩個 service 每秒各吐約 100KB log：
+#   noisy    沒設 rotation → json-file 無上限長大（一小時約 360MB）
+#   rotated  max-size 1m × max-file 3 → 永遠不超過約 3MB
+
+name: disk
+
+x-spam: &spam
+  image: alpine:3.22
+  command: ["sh", "-c", "while true; do head -c 768 /dev/urandom | base64; sleep 0.01; done"]
+
+services:
+  noisy:
+    <<: *spam
+
+  rotated:
+    <<: *spam
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "3"

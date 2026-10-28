@@ -1,0 +1,43 @@
+# 第 21 章：把 runtime 能鎖的都鎖起來（只跑 shorty，in-memory，不需要 DB）
+#
+#   docker compose -f tutorials/21-image-security/compose.hardened.yaml up -d --build
+#   curl localhost:8080/healthz
+#   docker compose -f tutorials/21-image-security/compose.hardened.yaml down
+#
+# 根目錄的 compose.yaml 已經有 read_only + no-new-privileges，
+# 這份再示範 cap_drop、tmpfs、pids_limit、user 等「能加就加」的選項。
+
+services:
+  app:
+    build:
+      context: ../../app
+      dockerfile: ../tutorials/21-image-security/Dockerfile
+    image: shorty:ch21
+    ports:
+      - "8080:8080"
+    environment:
+      BASE_URL: http://localhost:8080
+
+    # 再保險一次：就算 image 忘了寫 USER，這裡也強制 non-root
+    user: "65532:65532"
+
+    # root filesystem 唯讀：攻擊者沒辦法寫入後門、改設定檔
+    read_only: true
+    # 真的需要寫的地方給一塊記憶體檔案系統（shorty 本身不寫檔，這裡示範用）
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+
+    # 丟掉所有 Linux capabilities；shorty 聽 8080（>1024），一個都不需要
+    cap_drop:
+      - ALL
+    # setuid 程式也沒辦法提升權限
+    security_opt:
+      - no-new-privileges:true
+
+    # fork bomb 防線：最多 100 個 process / thread
+    pids_limit: 100
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    restart: unless-stopped

@@ -1,0 +1,34 @@
+# syntax=docker/dockerfile:1
+#
+# 第 23 章：對照組 —— 「全靠 QEMU 模擬」的多平台 build（不要拿來上線）
+#
+#   docker buildx build --platform linux/amd64,linux/arm64 \
+#     -f tutorials/23-multi-platform/Dockerfile.qemu -t shorty:qemu app
+#
+# 跟 app/Dockerfile 只差一件事：build stage 的 FROM 沒有 --platform=$BUILDPLATFORM。
+# 結果：要 build arm64 時，BuildKit 會拉 arm64 版的 golang image，
+# 在 amd64 機器上透過 QEMU「一條指令一條指令翻譯」執行整個 go build —— 能動，但慢好幾倍。
+#
+# 也因為整個編譯器都跑在目標架構裡，Go 自己就知道要編什麼架構，不用設 GOOS / GOARCH。
+
+# ── build stage（跑在「目標」平台，靠 QEMU 模擬）──────────────
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+COPY . .
+
+ARG VERSION=dev
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/shorty .
+
+# ── runtime stage（一樣是目標平台）──────────────────────────
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/shorty /shorty
+USER nonroot:nonroot
+EXPOSE 8080
+ENTRYPOINT ["/shorty"]

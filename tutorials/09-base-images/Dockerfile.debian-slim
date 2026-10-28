@@ -1,0 +1,23 @@
+# shorty on debian:trixie-slim（第 09 章候選之一）
+#
+#   docker build -f tutorials/09-base-images/Dockerfile.debian-slim -t shorty:ch09-slim app
+
+# ── build stage：四個版本都一樣，只換下面的 runtime base ─────────
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+# CGO_ENABLED=0 → 純 Go 靜態執行檔，不依賴 libc，放進哪種 base 都能跑
+# -trimpath 拿掉本機路徑；-s -w 拿掉符號表與除錯資訊（執行檔小約 30%）
+RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/shorty .
+
+# ── runtime：debian slim ───────────────────────────────────
+# glibc + bash + apt，debug 最方便；但 CA 憑證與 tzdata 要自己裝
+FROM debian:trixie-slim
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates tzdata \
+ && rm -rf /var/lib/apt/lists/*
+COPY --from=build /out/shorty /usr/local/bin/shorty
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/shorty"]

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hello from docker cp</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 4rem auto; padding: 0 1rem; line-height: 1.6; }
+    code { background: #f2f2f2; padding: 0.1rem 0.3rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>這頁是用 docker cp 放進來的</h1>
+  <p>第 05 章：<code>docker cp tutorials/05-exec-logs-inspect/index.html web:/usr/share/nginx/html/index.html</code></p>
+  <p>它只存在這個 container 的可寫層裡。<code>docker rm -f web</code> 之後再開一個新的 nginx，就會變回 Welcome to nginx!</p>
+</body>
+</html>

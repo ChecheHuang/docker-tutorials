@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+#
+# 演練 3：時區錯誤 —— 把 shorty 放進 scratch（沒有 /usr/share/zoneinfo）
+#
+#   docker build -f tutorials/25-incident-drills/tz/Dockerfile.scratch -t shorty:scratch app
+#   docker run --rm -e TZ=Asia/Taipei shorty:scratch          # log 時間還是 Z（UTC），而且不會報錯
+#
+# 修正：把時區資料庫編進執行檔（約多 450KB）
+#   docker build -f tutorials/25-incident-drills/tz/Dockerfile.scratch \
+#     --build-arg GOTAGS=timetzdata -t shorty:scratch-tz app
+#   docker run --rm -e TZ=Asia/Taipei shorty:scratch-tz       # +08:00
+#
+# 對照：app/Dockerfile 用的 distroless/static 本來就有 tzdata，設 TZ 就會生效。
+
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY . .
+
+# timetzdata build tag = 在程式裡 import _ "time/tzdata"，兩種寫法效果一樣
+ARG GOTAGS=""
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -tags "${GOTAGS}" -ldflags "-s -w" -o /out/shorty .
+
+# scratch：完全空的 image，沒有 tzdata、沒有 CA 憑證、沒有 /etc/passwd
+FROM scratch
+COPY --from=build /out/shorty /shorty
+# 沒有 /etc/passwd 只能寫數字
+USER 65532:65532
+EXPOSE 8080
+ENTRYPOINT ["/shorty"]

@@ -1,0 +1,5 @@
+# BuildKit 會優先使用「<Dockerfile 檔名>.dockerignore」，所以這份只對 Dockerfile.node 生效
+# 本機的 node_modules 是 host 架構（可能還是 Windows / macOS 版的 native module），絕對不要送進去
+node_modules/
+npm-debug.log
+.git

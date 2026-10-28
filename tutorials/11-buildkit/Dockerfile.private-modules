@@ -1,0 +1,44 @@
+# syntax=docker/dockerfile:1
+#
+# 第 11 章：私有 Go module 的「樣板」—— shorty 本身沒有私有依賴，這份不能直接 build 成功，
+# 把 github.com/your-org 換成你自己的 org 再用。
+#
+# 準備一個 .netrc 檔（不要放在 build context 裡！），內容一行：
+#   machine github.com login x-access-token password <你的 GitHub token>
+#
+#   docker build -f tutorials/11-buildkit/Dockerfile.private-modules \
+#     --secret id=netrc,src=$HOME/.netrc \
+#     -t shorty:private app
+#
+# 原理：
+#   - GOPRIVATE：這些路徑不走公開的 proxy.golang.org、也不查 sum.golang.org，直接去 VCS 抓
+#   - 直接抓 = 用 git over https，git 會讀 ~/.netrc 拿帳密
+#   - 公司若有私有 GOPROXY（Athens、Artifactory），go 指令對 GOPROXY 也會讀 .netrc 做認證
+#   - .netrc 用 secret mount 掛進去，只在 go mod download 這一步存在，不進 layer、不進 docker history
+
+FROM golang:1.26-alpine AS build
+# golang:alpine 沒有 git；私有模組要直接走 VCS 才需要
+RUN apk add --no-cache git
+WORKDIR /src
+
+ENV GOPRIVATE=github.com/your-org/*
+# 若用公司的私有 proxy，改成：
+# ENV GOPROXY=https://goproxy.your-company.example,https://proxy.golang.org,direct
+# ENV GONOSUMDB=github.com/your-org/*
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=secret,id=netrc,target=/root/.netrc,required=true \
+    go mod download
+
+COPY . .
+ARG VERSION=dev
+# 這一步不用再掛 secret：模組都已經在 cache mount 裡了
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/shorty .
+
+FROM gcr.io/distroless/static-debian12
+COPY --from=build /out/shorty /shorty
+EXPOSE 8080
+ENTRYPOINT ["/shorty"]

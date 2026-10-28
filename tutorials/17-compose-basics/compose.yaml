@@ -1,0 +1,29 @@
+# 第 17 章：只有 shorty 一個服務的 compose（in-memory，不接 DB）
+#
+# 取代第 12–16 章的這一長串：
+#   docker build -t shorty:ch17 app
+#   docker run -d --name shorty -p 8080:8080 \
+#     -e BASE_URL=http://localhost:8080 -e LOG_LEVEL=info \
+#     --stop-timeout 10 shorty:ch17
+#
+# 從 repo 根目錄執行：
+#   docker compose -f tutorials/17-compose-basics/compose.yaml up -d --build
+#   docker compose -f tutorials/17-compose-basics/compose.yaml ps
+#   docker compose -f tutorials/17-compose-basics/compose.yaml logs -f app
+#   docker compose -f tutorials/17-compose-basics/compose.yaml down
+#
+# 沒有寫 name:，所以 project 名稱取自這個檔案所在的資料夾 → 17-compose-basics
+# 不要寫 version: —— Compose v2 已經不需要，寫了只會得到一行 obsolete 警告
+
+services:
+  app:                         # service 名稱；同時也是 compose 網路裡的 DNS 名字
+    build:
+      context: ../../app       # 相對於「這個 compose 檔」所在的資料夾，不是你下指令的位置
+      # dockerfile: Dockerfile # 預設就是 context 裡的 Dockerfile（app/Dockerfile）
+    image: shorty:ch17         # 有 build 又有 image：build 完用這個名字標記
+    ports:
+      - "8080:8080"            # = docker run -p 8080:8080，一定要加引號（見 README 陷阱）
+    environment:               # = docker run -e
+      BASE_URL: http://localhost:8080
+      LOG_LEVEL: ${LOG_LEVEL:-info}   # 從 shell 環境變數替換，沒設就用 info
+    stop_grace_period: 10s     # = docker stop -t 10（第 16 章），這裡寫出預設值當作提醒

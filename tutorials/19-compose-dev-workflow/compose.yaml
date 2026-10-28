@@ -1,0 +1,72 @@
+# 第 19 章：基礎 compose（跟第 18 章相同）+ 一個 profile 才會啟動的 pgAdmin
+#
+# 這章的指令「從本章目錄執行」，因為 compose.override.yaml 只有在
+# 「沒有用 -f、在 compose.yaml 所在目錄執行」時才會被自動合併：
+#
+#   cd tutorials/19-compose-dev-workflow
+#   docker compose up -d --build                       # compose.yaml + compose.override.yaml（開發）
+#   docker compose --profile tools up -d               # 再加上 pgAdmin
+#   docker compose -f compose.yaml up -d --build       # 只用基礎檔（跟第 18 章一樣）
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d --build   # 類上線
+#   docker compose -f compose.yaml -f compose.watch.yaml up --watch     # Compose Watch
+
+services:
+  app:
+    build:
+      context: ../../app
+      args:
+        VERSION: ${VERSION:-dev}
+    image: shorty:${VERSION:-dev}
+    ports:
+      - "8080:8080"
+    environment:
+      BASE_URL: http://localhost:8080
+      DATABASE_URL: postgres://shorty:${POSTGRES_PASSWORD:-shorty}@db:5432/shorty?sslmode=disable
+      REDIS_URL: redis://cache:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: shorty
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shorty}
+      POSTGRES_DB: shorty
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shorty -d shorty"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  cache:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 有 profiles 的 service 預設不會啟動，要 --profile tools 或 COMPOSE_PROFILES=tools
+  pgadmin:
+    image: dpage/pgadmin4:9
+    profiles: [tools]
+    ports:
+      - "127.0.0.1:5050:80"          # 只綁本機；瀏覽器開 http://localhost:5050
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@example.com
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-shorty}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin  # 記住你在 pgAdmin 裡加的 server 設定
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  pgadmin-data:

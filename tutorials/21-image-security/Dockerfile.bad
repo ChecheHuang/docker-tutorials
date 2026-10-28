@@ -1,0 +1,34 @@
+# 第 21 章：反面教材 —— 能 build、能跑，但「每一行都在扣安全分數」
+#
+#   docker build -f tutorials/21-image-security/Dockerfile.bad -t shorty:bad app
+#   docker run --rm -p 8080:8080 shorty:bad
+#
+# 拿它跟 tutorials/21-image-security/Dockerfile 比掃描結果：
+#   docker scout quickview shorty:bad
+#   docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.76.1 image shorty:bad
+#
+# 千萬不要照抄到正式專案。每個 ❌ 都對應 README「核心概念」的一節。
+
+# ❌ 1. 浮動 tag：今天跟明天 build 出來的 base 可能完全不同，也沒辦法重現
+# ❌ 2. 完整版 golang image（Debian + 編譯器 + git + 一堆系統套件）直接拿來當 runtime，近 1GB
+FROM golang:latest
+
+# ❌ 3. 多裝 debug 工具：攻擊者進來後，curl / wget 就是他的下載器
+RUN apt-get update && apt-get install -y curl vim netcat-openbsd
+
+WORKDIR /app
+COPY . .
+
+# ❌ 4. 秘密寫死在 image：docker history / docker inspect 任何人都看得到（第 14 章）
+#       下一行「清掉」也沒用：舊值還留在 image 的 metadata 歷史裡
+ENV DATABASE_URL=postgres://shorty:SuperSecret123@db:5432/shorty?sslmode=disable
+ENV DATABASE_URL=
+
+RUN go build -o /app/shorty .
+
+EXPOSE 8080
+
+# ❌ 5. 沒有 USER：整個服務以 root（uid 0）執行
+#       一旦有 RCE 漏洞，攻擊者就是 container 裡的 root，離逃逸只差一個 kernel 漏洞
+# ❌ 6. shell form：PID 1 是 /bin/sh，收不到 SIGTERM（第 16 章）
+CMD /app/shorty

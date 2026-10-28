@@ -1,0 +1,21 @@
+# 演練 1：OOM 循環重啟
+#
+#   docker compose -f tutorials/25-incident-drills/oom/compose.yaml up -d
+#   docker compose -f tutorials/25-incident-drills/oom/compose.yaml ps -a
+#   docker inspect --format 'oom={{.State.OOMKilled}} exit={{.State.ExitCode}} restarts={{.RestartCount}}' oom-hog-1
+#   docker compose -f tutorials/25-incident-drills/oom/compose.yaml down
+#
+# tail /dev/zero 會一直找換行字元、把讀到的東西全部留在記憶體 → 很快撞到 64MB 上限被 kernel 殺掉。
+
+name: oom
+
+services:
+  hog:
+    image: alpine:3.22
+    command: ["sh", "-c", "echo 'starting, eating memory...'; tail /dev/zero"]
+    mem_limit: 64m
+    # 跟 memory 設一樣：不准用 swap，否則會先拖很久才被殺
+    memswap_limit: 64m
+    # 正式環境常見的 unless-stopped 會「無限」重啟，看起來像服務一直在閃。
+    # 演練用 on-failure:3，重試 3 次後停下來，方便 inspect 最後的狀態。
+    restart: "on-failure:3"

@@ -1,0 +1,21 @@
+# hello-node on distroless/nodejs（第 09 章，Node 對照組）
+#
+# build context 是第 08 章的 Node 專案：
+#   docker build -f tutorials/09-base-images/Dockerfile.node-distroless -t hello-node:distroless tutorials/08-multi-stage/node
+#
+# distroless/nodejs 只有 node 執行檔 + glibc，沒有 npm、沒有 shell。
+# build stage 用 bookworm（Debian 12），跟 runtime 的 debian12 同一代 glibc。
+
+FROM node:24-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+FROM gcr.io/distroless/nodejs24-debian12
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build /app/node_modules ./node_modules
+COPY package.json server.js ./
+EXPOSE 8080
+# 這個 image 的 ENTRYPOINT 已經是 node，所以 CMD 只要給檔名
+CMD ["server.js"]

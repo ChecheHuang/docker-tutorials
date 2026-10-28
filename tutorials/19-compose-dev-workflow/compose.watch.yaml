@@ -1,0 +1,26 @@
+# 第 19 章：Compose Watch 版本的開發流程（不用 bind mount、不用 air）
+#
+#   cd tutorials/19-compose-dev-workflow
+#   docker compose -f compose.yaml -f compose.watch.yaml up --build --watch
+#   # 或分兩步：docker compose -f compose.yaml -f compose.watch.yaml up -d --build
+#   #           docker compose -f compose.yaml -f compose.watch.yaml watch
+#
+# 用了 -f，compose.override.yaml 就不會自動合併 —— 這正是我們要的：
+# app 仍然用最終版 app/Dockerfile（distroless），Compose 在 host 上監看檔案，
+# 一有變更就重新 build image 並換掉 container。
+#
+# 為什麼不用 action: sync？sync 是把檔案複製進「正在跑的 container」，
+# 適合直譯語言或 container 裡有 air 的情況；shorty 的正式 image 是編譯好的
+# 單一執行檔，又是 distroless（沒有 shell 工具），只能 rebuild。
+# sync 的寫法見 README。
+
+services:
+  app:
+    develop:
+      watch:
+        # path 相對於 project directory（本目錄）
+        - action: rebuild
+          path: ../../app
+          ignore:
+            - "**/*_test.go"     # 改測試不需要重 build
+            - "*.md"

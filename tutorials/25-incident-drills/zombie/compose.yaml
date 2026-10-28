@@ -1,0 +1,27 @@
+# 演練 6：殭屍行程（PID 1 不收屍）
+#
+#   docker compose -f tutorials/25-incident-drills/zombie/compose.yaml up -d
+#   （等 2 秒）
+#   docker top zombie-no-init-1      # 5 個 [sleep] <defunct>
+#   docker top zombie-with-init-1    # 沒有 defunct
+#   docker compose -f tutorials/25-incident-drills/zombie/compose.yaml down
+#
+# (sleep 1 &) 的外層 subshell 馬上結束，sleep 1 變成孤兒、被過繼給 PID 1。
+# 接著 PID 1 exec 成 sleep 3600 —— sleep 不會呼叫 wait()，孩子死掉後就一直是殭屍。
+
+name: zombie
+
+x-leaker: &leaker
+  image: alpine:3.22
+  command: ["sh", "-c", "for i in 1 2 3 4 5; do (sleep 1 &); done; exec sleep 3600"]
+  # sleep 當 PID 1 也不處理 SIGTERM，down 時要等 10 秒被 SIGKILL；縮短一點
+  stop_grace_period: 1s
+
+services:
+  no-init:
+    <<: *leaker
+
+  with-init:
+    <<: *leaker
+    # 等於 docker run --init：PID 1 換成 tini，負責收養孤兒並 wait() 它們
+    init: true

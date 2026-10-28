@@ -1,0 +1,63 @@
+# 第 18 章：shorty + Postgres + Redis
+#
+# 從 repo 根目錄執行：
+#   cp tutorials/18-compose-multi-service/.env.example tutorials/18-compose-multi-service/.env   # 選用
+#   docker compose -f tutorials/18-compose-multi-service/compose.yaml up -d --build --wait
+#   curl -XPOST localhost:8080/api/links -d '{"url":"https://go.dev"}'
+#   docker compose -f tutorials/18-compose-multi-service/compose.yaml down      # 加 -v 會連 DB 資料一起刪
+#
+# .env 要放在「這個 compose 檔旁邊」（project directory），不是你下指令的目錄。
+#
+# 跟根目錄 compose.yaml 的差別只有：
+#   - build.context 是 ../../app（根目錄版是 ./app）
+#   - 沒有 restart / deploy.resources（第 15 章的東西，最終版才補上）
+#   - 沒有 read_only / security_opt（第 21 章）
+
+services:
+  app:
+    build:
+      context: ../../app
+      args:
+        VERSION: ${VERSION:-dev}       # 傳給 Dockerfile 的 ARG VERSION（第 10 章）
+    image: shorty:${VERSION:-dev}
+    ports:
+      - "8080:8080"
+    environment:
+      BASE_URL: http://localhost:8080
+      # 主機名稱 db / cache 就是下面的 service 名稱，靠 compose 網路的內建 DNS（第 12 章）
+      DATABASE_URL: postgres://shorty:${POSTGRES_PASSWORD:-shorty}@db:5432/shorty?sslmode=disable
+      REDIS_URL: redis://cache:6379/0
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy     # 等 db 的 healthcheck 通過，不只是 container 起來
+      cache:
+        condition: service_healthy     # shorty 連 Redis 沒有重試，這個尤其重要
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: shorty
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shorty}
+      POSTGRES_DB: shorty
+    volumes:
+      - db-data:/var/lib/postgresql/data   # named volume（第 13 章），down 之後資料還在
+    healthcheck:
+      # CMD-SHELL：交給 container 裡的 /bin/sh 執行（postgres image 有 shell）
+      test: ["CMD-SHELL", "pg_isready -U shorty -d shorty"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    # 沒有 ports：DB 只給 compose 網路裡的 app 連，不對 host 開放
+
+  cache:
+    image: redis:7-alpine
+    healthcheck:
+      # CMD：直接執行，不經過 shell
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  db-data:                               # 實際名稱會是 18-compose-multi-service_db-data

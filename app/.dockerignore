@@ -1,0 +1,11 @@
+# 不要送進 build context 的東西（第 10 章）
+# 送越少，build 越快，也不會把秘密不小心 COPY 進 image
+.git
+**/*_test.go
+*.exe
+/shorty
+*.md
+Dockerfile
+.dockerignore
+.env
+.env.*

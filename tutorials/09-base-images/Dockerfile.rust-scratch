@@ -1,0 +1,19 @@
+# hello-rs：musl 靜態連結 + scratch（第 09 章，Rust 對照組）
+#
+# build context 是第 08 章的 Rust 專案：
+#   docker build -f tutorials/09-base-images/Dockerfile.rust-scratch -t hello-rs:scratch tutorials/08-multi-stage/rust
+#
+# 對照第 08 章的 rust/Dockerfile（glibc + distroless/cc）。這份為了好讀省略 cargo-chef。
+
+# rust:alpine 的預設 target 就是 *-linux-musl，而且預設靜態連結
+FROM rust:1.95-alpine AS build
+# 連結器需要 musl 的 C runtime 檔案
+RUN apk add --no-cache musl-dev
+WORKDIR /app
+COPY . .
+RUN cargo build --release --bin hello-rs
+
+FROM scratch
+COPY --from=build /app/target/release/hello-rs /hello-rs
+EXPOSE 8080
+ENTRYPOINT ["/hello-rs"]

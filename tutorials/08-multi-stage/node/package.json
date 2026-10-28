@@ -1,0 +1,16 @@
+{
+  "name": "hello-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "第 08、09、23 章用來跟 shorty（Go）對照的最小 Node 服務",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}

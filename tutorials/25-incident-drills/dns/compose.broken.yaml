@@ -1,0 +1,33 @@
+# 演練 4：container 之間用名字連不到（DNS 失敗）
+#
+#   docker compose -f tutorials/25-incident-drills/dns/compose.broken.yaml up -d --build
+#   docker compose -f tutorials/25-incident-drills/dns/compose.broken.yaml logs app
+#   → postgres not ready, retrying ... lookup db ... no such host
+#   docker compose -f tutorials/25-incident-drills/dns/compose.broken.yaml down
+#
+# 原因：network_mode: bridge 把兩個 service 放到 Docker 的「預設 bridge」，
+# 預設 bridge 沒有內建 DNS，只有自訂 network（compose 預設會幫你建一個）才能用名字互連（第 12 章）。
+# 修正：把兩行 network_mode: bridge 刪掉，讓 compose 用專案自己的 network。
+
+name: dns
+
+services:
+  app:
+    build:
+      context: ../../../app
+    image: shorty:dns-drill
+    network_mode: bridge          # ❌ 故意的
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://shorty:shorty@db:5432/shorty?sslmode=disable
+    depends_on:
+      - db
+
+  db:
+    image: postgres:17-alpine
+    network_mode: bridge          # ❌ 故意的
+    environment:
+      POSTGRES_USER: shorty
+      POSTGRES_PASSWORD: shorty
+      POSTGRES_DB: shorty

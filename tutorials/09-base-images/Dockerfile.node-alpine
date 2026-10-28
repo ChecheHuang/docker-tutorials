@@ -1,0 +1,21 @@
+# hello-node on node:24-alpine（第 09 章，Node 對照組）
+#
+# build context 是第 08 章的 Node 專案：
+#   docker build -f tutorials/09-base-images/Dockerfile.node-alpine -t hello-node:alpine tutorials/08-multi-stage/node
+#
+# 注意：build 和 runtime 都用 alpine（musl）。有 native addon（bcrypt、sharp…）時，
+# 在 glibc 上裝的 node_modules 搬到 musl 上會壞，兩個 stage 的 libc 一定要一致。
+
+FROM node:24-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+FROM node:24-alpine
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node package.json server.js ./
+USER node
+EXPOSE 8080
+CMD ["node", "server.js"]

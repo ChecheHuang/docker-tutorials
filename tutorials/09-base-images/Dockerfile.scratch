@@ -1,0 +1,23 @@
+# shorty on scratch（第 09 章候選之一）—— 什麼都沒有，連 CA 憑證都要自己搬
+#
+#   docker build -f tutorials/09-base-images/Dockerfile.scratch -t shorty:ch09-scratch app
+
+# ── build stage ────────────────────────────────────────────
+FROM golang:1.26-alpine AS build
+# scratch 裡什麼都沒有，先在 build stage 備好 CA 憑證和時區資料，等一下搬過去
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/shorty .
+
+# ── runtime：scratch（空的，0 byte）────────────────────────
+FROM scratch
+# HTTPS / TLS 連線（例如連雲端 Postgres）需要 CA 憑證
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+# time.LoadLocation("Asia/Taipei") 需要時區資料
+COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
+COPY --from=build /out/shorty /shorty
+EXPOSE 8080
+ENTRYPOINT ["/shorty"]

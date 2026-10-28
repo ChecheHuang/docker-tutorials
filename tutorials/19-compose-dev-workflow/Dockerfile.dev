@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+#
+# 第 19 章：開發用 image —— 完整 Go 工具鏈 + air 熱重載
+# 由 compose.override.yaml 使用；build context 是 app/：
+#
+#   docker build -f tutorials/19-compose-dev-workflow/Dockerfile.dev -t shorty:dev-air app
+#
+# 跟 app/Dockerfile 的差別：這不是 multi-stage，最後的 image 就是 golang image 本身（好幾百 MB），
+# 只能拿來開發，絕對不要推上 registry 或拿去上線。
+
+FROM golang:1.26-alpine
+
+# air：偵測檔案變更 → 重新 go build → 重啟程式（github.com/air-verse/air）
+# 固定版本，不要用 @latest，免得某天 build 出來行為不一樣
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    go install github.com/air-verse/air@v1.67.4
+
+ENV CGO_ENABLED=0
+WORKDIR /src
+
+# 先把依賴下載進 image。第一次啟動時，空的 named volume go-mod
+# 會從 image 的 /go/pkg/mod 複製一份內容，之後就不用重抓
+COPY go.mod go.sum ./
+RUN go mod download
+
+# 原始碼不 COPY：執行時會用 bind mount 把 host 的 app/ 掛到 /src
+EXPOSE 8080
+CMD ["air", "-c", "/etc/air/air.toml"]

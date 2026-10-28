@@ -1,0 +1,3 @@
+# 真正的設定與秘密檔，只留 .example 進 git
+shorty.env
+secrets/

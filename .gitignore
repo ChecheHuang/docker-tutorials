@@ -1,0 +1,5 @@
+*.exe
+.env
+/app/shorty
+**/node_modules/
+**/target/

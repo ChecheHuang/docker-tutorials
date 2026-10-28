@@ -1,0 +1,29 @@
+# 第 19 章：開發用覆寫檔 —— 在本目錄執行 `docker compose up` 時自動合併
+#
+# 做的事：把 app 換成「golang image + air」，原始碼用 bind mount 掛進去，
+# 存檔後 air 偵測到變更，在 container 裡重新 go build 並重啟 shorty。
+#
+# 合併規則（重點）：
+#   - 單一值（image、build.dockerfile）→ 這裡的覆蓋 compose.yaml 的
+#   - environment → 依 key 合併，這裡的 LOG_LEVEL 蓋掉原本的
+#   - volumes → 依 container 路徑合併
+#   - ports → 合併（所以這裡不要再寫一次 8080）
+
+services:
+  app:
+    build:
+      # context 沿用 compose.yaml 的 ../../app；dockerfile 是「相對於 context」的路徑
+      dockerfile: ../tutorials/19-compose-dev-workflow/Dockerfile.dev
+    image: shorty:dev-air
+    environment:
+      LOG_LEVEL: debug
+    volumes:
+      - ../../app:/src                         # bind mount：host 上改檔，container 立刻看到
+      - ./.air.toml:/etc/air/air.toml:ro       # air 設定放章節目錄，不污染 app/
+      - go-mod:/go/pkg/mod                     # 依賴快取，container 重建也不用重抓
+      - go-build:/root/.cache/go-build         # 編譯快取，重編只要幾秒
+    stop_grace_period: 5s
+
+volumes:
+  go-mod:
+  go-build:

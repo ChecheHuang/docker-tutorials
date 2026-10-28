@@ -1,0 +1,39 @@
+# syntax=docker/dockerfile:1
+#
+# 第 16 章「反例」：用 shell form 啟動，SIGTERM 送不到 shorty。
+# 不要拿來上線，只是用來看 docker stop 卡 10 秒、exit 137 的樣子。
+#
+#   docker build -f tutorials/16-healthcheck-shutdown/Dockerfile.shell-form -t shorty:ch16-shell app
+#   docker run -d --name shorty-shell -p 8080:8080 shorty:ch16-shell
+#   time docker stop shorty-shell        # 大約 10 秒
+#   docker inspect -f '{{.State.ExitCode}}' shorty-shell   # 137 = 被 SIGKILL
+
+FROM golang:1.26-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+COPY . .
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/shorty .
+
+# shell form 需要 /bin/sh，所以這個反例只能用有 shell 的 alpine
+FROM alpine:3.22
+COPY --from=build /out/shorty /shorty
+EXPOSE 8080
+
+# ❌ shell form：Docker 實際執行的是 /bin/sh -c '/shorty; echo ...'
+#    PID 1 是 sh，shorty 只是它的子行程。
+#    docker stop 只把 SIGTERM 送給 PID 1（sh）；sh 不會轉交給 shorty，
+#    而 PID 1 對沒有裝 handler 的訊號，kernel 會直接忽略 → 什麼事都沒發生，
+#    10 秒後 Docker 送 SIGKILL，shorty 沒機會說 bye。
+#
+#    後面接一個 echo 是模擬真實世界常見的寫法（跑完還要做點事）。
+#    如果只寫 `CMD /shorty`，有些 shell 會自動優化成 exec，反例就不一定重現。
+CMD /shorty; echo "shorty exited with code $?"
+
+# ✅ 正確寫法（exec form），見同目錄的 Dockerfile 或 app/Dockerfile：
+# ENTRYPOINT ["/shorty"]
+# 一定要經過 shell（例如要展開變數）時，最後一行用 exec 把 shell 換掉：
+# CMD exec /shorty

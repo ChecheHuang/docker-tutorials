@@ -1,0 +1,4 @@
+# BuildKit 會優先使用「<Dockerfile 檔名>.dockerignore」，所以這份只對 Dockerfile.rust 生效
+# 本機 cargo build 產生的 target/ 可能好幾百 MB，而且是 host 架構，不要送進 build context
+target/
+.git
