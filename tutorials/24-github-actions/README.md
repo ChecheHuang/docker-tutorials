@@ -26,7 +26,7 @@ CI 的目標：**只要 push 程式碼或打 git tag，同一套步驟每次都�
 | 事件 | test | build | 掃描 | push | 產生的 tag |
 |------|------|------|------|------|------|
 | `pull_request` → main | ✅ | ✅ 兩個平台 | ✅ | ❌ | （`pr-12`，不推） |
-| `push` 到 main | ✅ | ✅ | ✅ | ✅ | `main`、`sha-a1b2c3d` |
+| `push` 到 main／master | ✅ | ✅ | ✅ | ✅ | `main`、`sha-a1b2c3d` |
 | `push` tag `v1.2.3` | ✅ | ✅ | ✅ | ✅ | `1.2.3`、`1.2`、`1`、`latest`、`sha-a1b2c3d` |
 
 PR 一定要 build：確認 Dockerfile 沒壞、兩個平台都編得過。但**不能 push**：fork 來的 PR 拿不到寫入權限，而且未審查的程式碼不該變成 image。
@@ -91,10 +91,10 @@ test ──needs──▶ docker
 ```yaml
 on:
   push:
-    branches: [main]
+    branches: [main, master]
     tags: ["v*.*.*"]
   pull_request:
-    branches: [main]
+    branches: [main, master]
   workflow_dispatch:
 ```
 
