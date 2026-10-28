@@ -83,4 +83,28 @@ docker compose -f tutorials/17-compose-basics/compose.yaml up -d --build
 
 ## 驗證結果
 
-（尚未驗證）
+驗證日期 2026-10-28，環境：WSL2 Ubuntu、Docker Engine 29.9.2、Compose v5.6.1、buildx v0.38.1、amd64 主機（arm64 用 QEMU 模擬）。
+
+**通過**
+
+- **步驟 1 最終版**：`docker build`、`docker run`、`compose up --build`（db、cache healthy）、POST 回 201、GET 短網址回 302、`/readyz` 回 `{"cache":"ok","store":"ok"}`、`down`。
+- **步驟 2 各章 Dockerfile**：第 06–11、14、16（需 `--build-context probe=...`）、19（`Dockerfile.dev`）、21、22、25（tz）全部 build 成功。第 11 章 `secret-demo` 的 secret 不在 `docker history` 裡；`private-modules` 依 VERIFY 預期需要 `.netrc`，不驗證。
+- **步驟 3 compose**：第 17、18、19（預設、prod、watch）、20、21、25 的 `config` 皆通過。第 17、18 `up`／`down` 正常；第 18 `down`（不加 `-v`）後再 `up`，資料仍在。第 19 air 熱重載與 `compose watch` 的 rebuild 皆實測（測完已還原 `server.go`）；`--profile tools` 的 pgAdmin 回 302。第 20 broken 檔逐關重現，錯誤訊息與 README 一致。
+- **步驟 4 動手做**：第 08 `--target build`、第 09 壞掉的 build 出現 `exec /shorty: no such file or directory`、第 10 build context 排除 `.env`、`VERSION` 注入、第 11 cache／builder／secret、第 12 `setup.sh up/check/down`、第 13 備份還原（非空 volume 會拒絕覆蓋）、第 14 密碼檔與 `--env-file`、第 15 OOM（exit 137、`OOMKilled=true`）、第 16 healthcheck 轉 healthy、`docker stop` 0.6 秒 exit 0；shell-form 等滿 10 秒後 exit 137。第 21 Trivy：最終版 0 HIGH／CRITICAL，`Dockerfile.bad` 有 1 個 HIGH；read-only、cap-drop、`--user` 範例行為符合 README。第 22 本機 build 與 OCI label 正確（未 push）。第 23 `binfmt` 註冊後，amd64 + arm64 的 cross、qemu、rust、node 多平台 build 皆通過，arm64 image 在 QEMU 下回 `{"status":"ok"}`。第 25 OOM、時區、DNS 失敗、port 衝突、殭屍行程皆重現。
+
+**修正（已 commit）**
+
+- 第 21 `compose.hardened.yaml`：`pids_limit` 與 `deploy.resources.limits` 併用時，compose v5.6 報 `can't set distinct values on 'pids_limit' and 'deploy.resources.limits.pids'`。改用 `mem_limit: 128M`，限制值不變。
+- 第 25 README 演練 4：`docker run --network container:$APP` 在 app 退出後無法執行，改成在預設 bridge 上測（這也是 app 所在的網路）。
+- 第 25 README 演練 6 與 `zombie/compose.yaml` 註解：此環境的 `docker top` 不列出 `<defunct>`，改用 `docker exec ... ps -o pid,ppid,stat,comm`。
+- 範例 image 大小依實測更新：第 07、08、09、10、11、21 章。
+
+**未驗證／需要確認**
+
+- **沒有執行的破壞性指令**（VERIFY 規定要先問）：第 18、19、20 章的 `down -v`、第 14 章的 `docker volume rm shorty-db-ch14`、第 13 章的 `docker volume prune`、第 25 章 disk 演練與 `daemon.json` 演練。
+- **第 21 章 Docker Scout**：未登入，略過。
+- **第 22 章 `release.sh`**：未 push。只驗證了等價的本機 build 與 label。
+- **第 24 章 GitHub Actions**：無法在本機執行。workflow 可解析，用到的 action 版本 tag／SHA 都存在。
+- **第 15 章**：只跑了 OOM 腳本，其他段落未逐項跑。
+- **第 06、07 章**：只驗證 build 指令，未比對 cache 耗時。
+- **測試殘留**（未清除，需要你決定）：volumes `docker-tutorials_db-data`、`18-compose-multi-service_db-data`、`shorty-db`、`shorty-db-restored`、`shorty-db-ch14`、`19-compose-dev-workflow_*`；buildx builder `multi`（第 23 章建立）；兩個無名的 `shorty` container（`lucid_goldstine`、`serene_lewin`，沒有發布 port）。
